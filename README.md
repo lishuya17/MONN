@@ -6,6 +6,9 @@ Before run the MONN model in ./src/, please first use ./src/preprocessing_and_cl
 
 ### Requirements:
 Python2.7
+
 rdkit (for preprocessing)
+
 Pytorch >= 0.4.0
+
 scikit-learn
