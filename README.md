@@ -1,4 +1,4 @@
-## Codes for "MONN: a Multi-Objective Neural Network for Predicting Pairwise Non-Covalent Interactions and Binding Affinities between Compounds and Proteins" (under review)
+## Codes for "MONN: a Multi-Objective Neural Network for Predicting Pairwise Non-Covalent Interactions and Binding Affinities between Compounds and Proteins"
 
 The benchmark dataset described in this paper can be found in ./data/, and the creation of this dataset can be reproduced by the protocols in ./create_dataset/.
 
