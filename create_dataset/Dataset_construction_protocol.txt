@@ -1,0 +1,107 @@
+This is the Dataset construction protocol with output format description.
+
+INPUT: files from PDB and PDBbind 
+OUTPUT: dataset1: protein-ligand interaction site dict; dataset2: protein-ligand binding pocket dict
+
+
+Step1: data downloading
+1) PDBbind data: Download PDBbind (v2018, general set) data  from http://www.pdbbind-cn.org/index.asp. Put the protein-ligand complex data into "./pdbbind_files/", and put the index files into "./pdbbind_index/".
+Note that the complex data was only used for binding pocket extraction.
+
+2) PDB data: Download the SDF file containing the ligand graphs from http://ligand-expo.rcsb.org/ld-download.html. Put the file "Components-pub.sdf" under current folder.
+Run "step1.2_get_wget_list.py" to extract PDB IDs and ligand IDs of all protein-ligand complex from "./pdbbind_index/INDEX_general_PL.2018", and generate the urls into the files "out1.2_pdbbind_wget_complex.txt" and "out1.2_pdbbind_wget_ligand.txt" for wget. This also generates "output1.2_pdbid_list.txt" for PDB ID to UniProt ID mapping.
+Note that only single ligands with standard PDB ligand IDs will be remained. That is, ligand names like e.g. "5-mer", "SIA-GAL" and "0LU/0LW" will be discarded.
+
+3) Create the path "./pdb_files/", and then use wget to download all .pdb files from PDB:
+    wget -i out1.2_pdbbind_wget_complex.txt -P ./pdb_files/
+    wget -i out1.2_pdbbind_wget_ligand.txt -P ./pdb_files/
+
+4) Upload the "out1.2_pdbid_list.txt" to https://www.uniprot.org/uploadlists/ (select options from "PDB" to "UniProtKB") and download "Tab-separated" mapping result. Name the file as "out1.4_pdb_uniprot_mapping.tab", and put the file under current folder.
+
+5) Run "step1.5_get_uniprotID_list.py" to get all possible UniProt IDs that might be used. The output file will be "out1.5_uniprotid_list.txt".
+Note that if any PDB ID does not get mapped from the previous step, we will try to use the mapping provided by PDBbind. As the mapping provided by PDBbind may contain UniProt IDs from the old version of Uniprot, there are some IDs without accessible sequences.
+
+6) Upload the "out1.5_uniprotid_list.txt" to https://www.uniprot.org/uploadlists/ (select options from "UniProtKB AC/ID" to "UniProtKB") and download the fasta file containing the UniProt sequences. Rename the file as "out1.6_pdbbind_seqs.fasta", and put the file under current folder. And also download the "Tab-separated" result and name it as "out1.6_uniprot_uniprot_mapping.tab", because some old-version Uniprot IDs need to be updated.
+
+
+Step2: generate the dataset file containing input information and affinity values
+Run "step2_get_datafile.py" and the code will output "out2_pdbbind_all_datafile.tsv". The columns in the datafile are:
+	PDB ID of the complex
+	Uniprot ID of the protein
+	PDB ID of the ligand
+	Inchi of the ligand
+	Sequence of the protein
+	Measurement (Ki, Kd, IC50)
+	Affinity values (-log10 Ki/Kd/IC50)
+
+
+Step3: calculate the non-covalent interactions between proteins and ligands
+Extract the non-covalent interactions by using PLIP (https://github.com/ssalentin/plip/)
+Put the result files in ./plip_result_all_set/
+Note: command for using PLIP: python plipcmd.py -f xxx.pdb -t --name xxx_output
+
+
+Step4: extract the interaction information from PLIP output
+Run step4_get_interaction.py to read raw plip output, map ligand interaction sites and store protein interaction sites
+Output: "out4_interaction_dict", a dict packed by pickle. Key is "pdbID_ligandID" (e.g. "4cpa_GLY"); value is a dict: 
+	{"bond": list [bond_type, chain_id, residue_name(3 letters), residue_idx, residue_atom_idx, ligand_chain_id, ligand_name, ligand_idx, ligand_atom_idx];
+	"atom_idx": int, ligand atom index list
+	"atom_name": str, ligand atom full name list
+	"atom_element": str, ligand atom element type list
+	"atom_interact": int, ligand atom interaction list (0 or 1)
+	 "atom_bond_type": list of tuple (atom_name, bond_type)
+	"sequence": dict, {chain_id: (sequence, index_list)}
+	"residue_interact": list of tupe(chain_id+residue_idx, residue_name(1-letter), bond_type)
+	 }
+
+
+Step5: extract the pocket positions from PDBbind
+Run step5_get_pocket.py to get pocket information from PDBbind files
+Output: "out5_pocket_dict", a dict packet by pickle. Key is PDB ID, value is
+    {"pocket": { chain_id: (sequence, idx_list) };  "protein": { chain_id: (sequence, idx_list) }}}
+
+
+Step6: Sequence alignment between the sequence from the complex structures and the UniProt sequences
+1) Run step6_get_fasta.py to prepare the .fasta files for sequence alignment
+Output: "out6.1_query_pdb.fasta", "out6.1_target_uniprot_pdb.fasta", "out6.2_query_pdbbind.fasta" and "out6.2_target_uniprot_pdbbind.fasta"
+2) For sequence alignment, we modified the code from https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library.
+First, add the path of libssw.so into LD_LIBRARY_PATH:
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/smith-waterman-src
+Second, copy files into the smith-waterman-src directory:
+	cp out6.1_query_pdb.fasta ./smith-waterman-src
+	cp out6.1_target_uniprot_pdb.fasta ./smith-waterman-src
+	cp out6.2_query_pdbbind.fasta ./smith-waterman-src
+	cp out6.2_target_uniprot_pdbbind.fasta ./smith-waterman-src
+Third, run the alignment:
+	cd smith-waterman-src
+    python pyssw_pairwise.py -c -p out6.1_query_pdb.fasta out6.1_target_uniprot_pdb.fasta  > out6.3_pdb_align.txt
+	python pyssw_pairwise.py -c -p out6.2_query_pdbbind.fasta out6.2_target_uniprot_pdbbind.fasta  > out6.4_pdbbind_align.txt
+	cd ..
+
+
+Step7: combine the alignment result and the interaction result to get the final interaction dict
+Run step7_final_interaction.py
+Output: "out7_final_pairwise_interaction_dict",  a dict packet by pickle. Key is PDB ID, value is
+	{"ligand": str, ligand name (3-letter name from PDB)
+	 "atom_idx": int, ligand atom index list
+	"atom_name": str, ligand atom full name list
+	"atom_element": str, ligand atom element type list
+	"atom_interact": int, ligand atom interaction list (0 or 1)
+	 "atom_bond_type": list of tuple (atom_name, bond_type)
+	 "uniprot_id": str
+	 "uniprot_seq": str
+	 "interact_in_uniprot_seq": list of int(sequence positions)
+	 "residue_bond_type": list of tuple(sequence_position, bond_type)
+	 }
+
+
+Step8: combine the alignment result and the pocket result to get the final pocket dict
+Run step8_final_pocket.py
+Output: "out8_final_pocket_dict",  a dict packet by pickle. Key is PDB ID, value is
+     {"ligand": str;"pocket_in_uniprot_seq": list of sequence positions; 'uniprot_id': str; 'uniprot_seq': str}
+
+Finally, copy the generated files: 
+	cp out7_final_pairwise_interaction_dict ../data/interaction_dict
+	cp out8_final_pocket_dict ../data/pocket_dict
+	cp out2_pdbbind_all_datafile.tsv ../data/pdbbind_all_datafile.tsv
+	cp Components-pub.sdf ../data/
