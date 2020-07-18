@@ -12,3 +12,9 @@ rdkit (for preprocessing)
 Pytorch >= 0.4.0
 
 scikit-learn
+
+### Training \& Evaluation
+```
+cd ./src
+python CPI_train.py
+```
