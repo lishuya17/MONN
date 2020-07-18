@@ -15,6 +15,6 @@ scikit-learn
 
 ### Training \& Evaluation
 ```
-cd ./src
+cd ./src/
 python CPI_train.py
 ```
