@@ -4,6 +4,9 @@ The benchmark dataset described in this paper can be found in ./data/, and the c
 
 Before run the MONN model in ./src/, please first use ./src/preprocessing_and_clustering.py to produce necessary files.
 
+For cross validation, e.g., using IC50 data, new-compound setting and clustering threshold 0.3, run:
+python CPI_train.py IC50 new_compound 0.3
+
 ### Requirements:
 Python2.7
 
@@ -13,8 +16,3 @@ Pytorch >= 0.4.0
 
 scikit-learn
 
-### Training \& Evaluation
-```
-cd ./src/
-python CPI_train.py
-```
