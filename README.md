@@ -2,7 +2,7 @@
 
 The benchmark dataset described in this paper can be found in ./data/, and the creation of this dataset can be reproduced by the protocol in ./create_dataset/.
 
-Before run the MONN model in ./src/, please first use ./src/preprocessing_and_clustering.py to produce necessary files.
+Before running the MONN model in ./src/, please first use ./src/preprocessing_and_clustering.py to produce necessary files.
 
 For cross validation, e.g., using IC50 data, new-compound setting and clustering threshold 0.3, run:
 
