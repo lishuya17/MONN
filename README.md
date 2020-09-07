@@ -17,3 +17,8 @@ Pytorch >= 0.4.0
 
 scikit-learn
 
+### License
+
+This software is copyrighted by Machine Learning and Computational Biology Group @ Tsinghua University.
+
+The algorithm and data can be used only for NON COMMERCIAL purposes.
